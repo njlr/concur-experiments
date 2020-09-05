@@ -40,6 +40,7 @@ type Waiter<'t> () =
       if not isDisposed
       then
         isDisposed <- true
+        result <- None
 
         for cancelCallback in cancelCallbacks do
           cancelCallback (OperationCanceledException ())
