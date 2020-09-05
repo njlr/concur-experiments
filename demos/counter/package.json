@@ -1,6 +1,6 @@
 {
-  "name": "concur-experiments",
-  "version": "1.0.0",
+  "name": "concur",
+  "version": "0.1.0",
   "main": "index.js",
   "private": true,
   "devDependencies": {

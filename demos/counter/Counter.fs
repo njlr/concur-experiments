@@ -1,4 +1,4 @@
-﻿module Concur.Demo
+﻿module Concur.Demo.Counter
 
 open FSharp.Control
 open Fable.React
@@ -19,11 +19,11 @@ let rec counter (count : int) : ConcurApp =
             []
             [ str (sprintf "Count: %i" count) ]
           button
-            [ OnClick (fun _ -> w.Resolve (count + 1)) ]
-            [ str "+1" ]
-          button
             [ OnClick (fun _ -> w.Resolve (count - 1)) ]
             [ str "-1" ]
+          button
+            [ OnClick (fun _ -> w.Resolve (count + 1)) ]
+            [ str "+1" ]
         ]
 
     // Wait for user input

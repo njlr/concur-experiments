@@ -6,13 +6,12 @@ type Waiter<'t> () =
   let mutable isDisposed = false
   let mutable result = None
   let mutable callbacks = []
-  let mutable cancelCallbacks = []
 
   member this.Resolve (x : 't) =
     result <- Some x
 
-    for callback in callbacks do
-      callback x
+    for (resolve, _) in callbacks do
+      resolve x
 
     callbacks <- []
 
@@ -32,8 +31,7 @@ type Waiter<'t> () =
         | None ->
           Async.FromContinuations
             (fun (resolve, reject, cancel) ->
-              callbacks <- resolve :: callbacks
-              cancelCallbacks <- cancel :: cancelCallbacks)
+              callbacks <- (resolve, cancel) :: callbacks)
 
   interface IDisposable with
     override this.Dispose () =
@@ -42,8 +40,7 @@ type Waiter<'t> () =
         isDisposed <- true
         result <- None
 
-        for cancelCallback in cancelCallbacks do
-          cancelCallback (OperationCanceledException ())
+        for (_, cancel) in callbacks do
+          cancel (OperationCanceledException ())
 
         callbacks <- []
-        cancelCallbacks <- []

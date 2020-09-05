@@ -10,7 +10,7 @@ console.log({ mode });
 module.exports = {
   mode,
   devtool: isProduction ? false : 'eval-source-map',
-  entry: './concur.fsproj',
+  entry: './counter.fsproj',
   output: {
     path: path.join(__dirname, './out'),
     filename: 'bundle.js',
