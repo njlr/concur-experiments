@@ -1,0 +1,7 @@
+.config
+.ionide
+.paket
+bin
+obj
+node_modules
+paket-files
