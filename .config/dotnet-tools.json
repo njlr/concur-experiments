@@ -7,6 +7,12 @@
       "commands": [
         "paket"
       ]
+    },
+    "femto": {
+      "version": "0.8.6",
+      "commands": [
+        "femto"
+      ]
     }
   }
 }
