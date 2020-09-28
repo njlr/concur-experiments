@@ -3,55 +3,85 @@ module Concur.Driver
 open System.Threading
 open FSharp.Control
 open Fable.Core
+open Fable.Core.JS
+open Fable.Core.JsInterop
 open Fable.React
 open Concur
 
-type private Props =
+let rec private renderConcurElement (handleAction) (concurElement : ConcurElement<_>) =
+  match concurElement with
+  | Simple reactElement -> reactElement
+  | Connected (connections, reactElementFn, children) ->
+    let reactProps =
+      seq {
+        match connections.OnClick with
+        | Some onClick ->
+          yield
+            Props.OnClick
+              (fun e ->
+                let actions = onClick e
+
+                for action in actions do
+                  handleAction action
+              )
+            :> Props.IHTMLProp
+        | None -> ()
+      }
+      |> Seq.toList
+
+    let reactElementChildren =
+      children
+      |> List.map (renderConcurElement handleAction)
+
+    reactElementFn reactProps reactElementChildren
+
+type private Props<'tstate> =
   {
-    App : ConcurApp
+    App : ConcurApp<'tstate>
+    InitialState : 'tstate
   }
 
-type private State =
+type private State<'tstate> =
   {
-    View : ReactElement
+    State : 'tstate
   }
 
-type private ConcurDriver (initProps : Props) =
-  inherit Component<Props, State> (initProps) with
-    let mutable cts = new CancellationTokenSource ()
-
+type private ConcurDriver<'tstate> (initProps : Props<'tstate>) =
+  inherit Component<Props<'tstate>, State<'tstate>> (initProps) with
     do
       base.setInitState
-        { View = fragment [] [] }
-
-    member private this.Start () =
-      Async.StartAsPromise (
-        async {
-          for view in this.props.App do
-            this.setState (fun s _ -> { s with View = view })
-        },
-        cts.Token
-      )
-      |> ignore
+        {
+          State = initProps.InitialState
+        }
 
     override this.componentDidMount () =
-      this.Start ()
+      ()
 
-    override this.componentDidUpdate (prevProps, _) =
-      if prevProps.App <> this.props.App
-      then
-        cts.Cancel ()
-        cts <- new CancellationTokenSource ()
-        this.Start ()
+    override this.componentDidUpdate (prevProps, prevState) =
+      ()
 
     override this.componentWillUnmount () =
-      cts.Cancel ()
-      cts.Dispose ()
+      ()
 
     override this.render () =
-      this.state.View
+      let concurElement, actions = this.props.App this.state.State
 
-let inline private concurDriver' (app : ConcurApp) =
-  ofType<ConcurDriver, Props, State> { App = app } []
+      let handleAction action =
+        match action with
+        | SetState nextState ->
+          this.setState (fun _ _ -> { State = nextState })
+        | ConsoleLog x ->
+          printfn "%s" x
 
-let concurDriver (app : ConcurApp) = concurDriver' app
+      for action in actions do
+        handleAction action
+
+      let reactElement = renderConcurElement handleAction concurElement
+
+      reactElement
+
+let inline private concurDriver' (app : ConcurApp<'tstate>) (initialState : 'tstate) =
+  ofType<ConcurDriver<_>, Props<_>, State<_>> { App = app; InitialState = initialState } []
+
+let concurDriver (app : ConcurApp<'tstate>) (initialState : 'tstate) =
+  concurDriver' app initialState

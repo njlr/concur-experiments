@@ -5,7 +5,6 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Concur.fs" />
-    <Compile Include="Waiter.fs" />
     <Compile Include="Driver.fs" />
     <Compile Include="Dom.fs" />
   </ItemGroup>
