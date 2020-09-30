@@ -7,3 +7,4 @@ nuget Fable.React
 nuget Fable.SimpleHttp
 nuget Thoth.Json
 nuget Thoth.Json.Net
+github xyncro/aether:8.3.1 src/Aether/Aether.fs

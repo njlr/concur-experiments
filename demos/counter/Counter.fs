@@ -4,26 +4,25 @@ open Fable.React
 open Browser.Dom
 open Concur
 
-let counter : ConcurApp<int> =
+let div = ConcurElement.wrapReact div
+
+let str text = ConcurElement.wrapReact (fun _ _ -> str text) [] []
+
+let counter : ConcurApp<int, Unit> =
   (fun count ->
     let el =
-      ConcurElement.stateless
-        div
+      div
         []
         [
-          (ConcurElement.connected
-            {
-              OnClick = Some (fun _ -> [ SetState (count - 1) ])
-            }
+          (ConcurElement.create
+            (Connections.onClick (fun _ -> [ SetState (fun x -> x - 1) ]))
             button
-            [ ConcurElement.simple (str "-1") ])
-          ConcurElement.simple (str (string count))
-          (ConcurElement.connected
-            {
-              OnClick = Some (fun _ -> [ SetState (count + 1) ])
-            }
+            [ str "-1" ])
+          (str (string count))
+          (ConcurElement.create
+            (Connections.onClick (fun _ -> [ SetState (fun x -> x + 1) ]))
             button
-            [ ConcurElement.simple (str "+1") ])
+            [ str "+1" ])
         ]
 
     (el, []))

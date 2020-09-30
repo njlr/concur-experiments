@@ -5,5 +5,5 @@ open Fable.React
 open Browser.Types
 open Concur.Driver
 
-let runApp (container : Element) (app : ConcurApp<'tstate>) (initialState : 'tstate) =
+let runApp (container : Element) (app : ConcurApp<'tstate, Unit>) (initialState : 'tstate) =
   ReactDom.render (concurDriver app initialState, container)
