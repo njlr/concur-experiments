@@ -4,10 +4,14 @@
     <TargetFramework>netstandard2.1</TargetFramework>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="..\paket-files\xyncro\aether\src\Aether\Aether.fs">
+      <Paket>True</Paket>
+      <Link>paket-files/Aether.fs</Link>
+    </Compile>
     <Compile Include="Concur.fs" />
-    <Compile Include="Waiter.fs" />
     <Compile Include="Driver.fs" />
     <Compile Include="Dom.fs" />
+    <Compile Include="Components.fs" />
   </ItemGroup>
   <Import Project="..\.paket\Paket.Restore.targets" />
 </Project>

@@ -4,7 +4,11 @@
     <TargetFramework>netstandard2.1</TargetFramework>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="Weather.fs" />
+    <Compile Include="..\..\paket-files\xyncro\aether\src\Aether\Aether.fs">
+      <Paket>True</Paket>
+      <Link>paket-files/Aether.fs</Link>
+    </Compile>
+    <Compile Include="ToDos.fs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\concur\concur.fsproj" />

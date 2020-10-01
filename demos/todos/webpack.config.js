@@ -10,7 +10,7 @@ console.log({ mode });
 module.exports = {
   mode,
   devtool: isProduction ? false : 'eval-source-map',
-  entry: './weather.fsproj',
+  entry: './todos.fsproj',
   output: {
     path: path.join(__dirname, './out'),
     filename: 'bundle.js',
@@ -18,13 +18,6 @@ module.exports = {
   devServer: {
     contentBase: path.join(__dirname, './public'),
     port: 8080,
-    proxy: {
-      '/api': {
-        target: 'https://www.metaweather.com',
-        secure: true,
-        changeOrigin: true,
-      },
-    },
   },
   module: {
     rules: [

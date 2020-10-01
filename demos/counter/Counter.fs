@@ -1,38 +1,23 @@
 ﻿module Concur.Demo.Counter
 
-open FSharp.Control
-open Fable.React
-open Fable.React.Props
 open Browser.Dom
 open Concur
+open Concur.Components
 
-let rec counter (count : int) : ConcurApp =
-  asyncSeq {
-    use w = new Waiter<_> ()
+let counter : ConcurApp<int, Unit> =
+  (fun count ->
+    div
+      []
+      [
+        button [] [ str "-1" ]
+        |> ConcurElement.onClick (fun _ -> SetState (fun x -> x - 1))
 
-    // Yield the "view" to the controller
-    yield
-      fragment
-        []
-        [
-          h1
-            []
-            [ str (sprintf "Count: %i" count) ]
-          button
-            [ OnClick (fun _ -> w.Resolve (count - 1)) ]
-            [ str "-1" ]
-          button
-            [ OnClick (fun _ -> w.Resolve (count + 1)) ]
-            [ str "+1" ]
-        ]
+        str (string count)
 
-    // Wait for user input
-    let! next = w.Resolved
-
-    // Recurse!
-    yield! counter next
-  }
+        button [] [ str "+1" ]
+        |> ConcurElement.onClick (fun _ -> SetState (fun x -> x + 1))
+      ])
 
 let container = document.getElementById "root"
 
-Dom.runApp container (counter 0)
+Dom.runApp container counter 0

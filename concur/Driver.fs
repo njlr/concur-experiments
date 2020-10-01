@@ -3,55 +3,118 @@ module Concur.Driver
 open System.Threading
 open FSharp.Control
 open Fable.Core
+open Fable.Core.JS
+open Fable.Core.JsInterop
 open Fable.React
 open Concur
 
-type private Props =
-  {
-    App : ConcurApp
+let rec private collectRenderActions (state) (concurElement : ConcurElement<_, _>) =
+  seq {
+    match concurElement.Connections.OnRender with
+    | Some onRender -> yield onRender state
+    | None -> ()
+
+    yield!
+      concurElement.Children
+      |> Seq.collect (collectRenderActions state)
   }
 
-type private State =
+let rec private renderConcurElement (dispatch) (concurElement : ConcurElement<_, _>) =
+  let connections = concurElement.Connections
+  let children = concurElement.Children
+  let reactElementFn = concurElement.RenderReact
+
+  let reactProps =
+    seq {
+      match connections.OnClick with
+      | Some onClick ->
+        yield
+          Props.OnClick
+            (fun e ->
+              let action = onClick e
+
+              dispatch action
+            )
+          :> Props.IHTMLProp
+      | None -> ()
+
+      match connections.OnChange with
+      | Some onChange ->
+        yield
+          Props.OnChange
+            (fun e ->
+              let action = onChange e
+
+              dispatch action
+            )
+          :> Props.IHTMLProp
+      | None -> ()
+    }
+    |> Seq.toList
+
+  let reactElementChildren =
+    children
+    |> List.map (renderConcurElement dispatch)
+
+  reactElementFn reactProps reactElementChildren
+
+type private Props<'tstate> =
   {
-    View : ReactElement
+    App : ConcurApp<'tstate, Unit>
+    InitialState : 'tstate
   }
 
-type private ConcurDriver (initProps : Props) =
-  inherit Component<Props, State> (initProps) with
-    let mutable cts = new CancellationTokenSource ()
+type private State<'tstate> =
+  {
+    State : 'tstate
+  }
 
+type private ConcurDriver<'tstate> (initProps : Props<'tstate>) =
+  inherit Component<Props<'tstate>, State<'tstate>> (initProps) with
     do
       base.setInitState
-        { View = fragment [] [] }
-
-    member private this.Start () =
-      Async.StartAsPromise (
-        async {
-          for view in this.props.App do
-            this.setState (fun s _ -> { s with View = view })
-        },
-        cts.Token
-      )
-      |> ignore
+        {
+          State = initProps.InitialState
+        }
 
     override this.componentDidMount () =
-      this.Start ()
+      ()
 
-    override this.componentDidUpdate (prevProps, _) =
-      if prevProps.App <> this.props.App
-      then
-        cts.Cancel ()
-        cts <- new CancellationTokenSource ()
-        this.Start ()
+    override this.componentDidUpdate (prevProps, prevState) =
+      ()
 
     override this.componentWillUnmount () =
-      cts.Cancel ()
-      cts.Dispose ()
+      ()
 
     override this.render () =
-      this.state.View
+      let state = this.state.State
 
-let inline private concurDriver' (app : ConcurApp) =
-  ofType<ConcurDriver, Props, State> { App = app } []
+      let concurElement = this.props.App state
 
-let concurDriver (app : ConcurApp) = concurDriver' app
+      let rec dispatch action =
+        match action with
+        | SetState map ->
+          this.setState (fun s _ -> { State = map s.State })
+        | ConsoleLog x ->
+          printfn "%s" x
+        | Output _ -> ()
+        | Sequence xs ->
+          for x in xs do
+            dispatch x
+
+      let renderActions =
+        concurElement
+        |> collectRenderActions state
+
+      for renderAction in renderActions do
+        dispatch renderAction
+
+      let reactElement = renderConcurElement dispatch concurElement
+
+      reactElement
+
+let inline private concurDriver' (app : ConcurApp<'tstate, Unit>) (initialState : 'tstate) =
+  ofType<ConcurDriver<_>, Props<_>, State<_>> { App = app; InitialState = initialState } []
+
+let concurDriver (app : ConcurApp<'tstate, Unit>) (initialState : 'tstate) =
+  concurDriver' app initialState
