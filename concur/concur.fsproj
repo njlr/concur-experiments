@@ -11,6 +11,7 @@
     <Compile Include="Concur.fs" />
     <Compile Include="Driver.fs" />
     <Compile Include="Dom.fs" />
+    <Compile Include="Components.fs" />
   </ItemGroup>
   <Import Project="..\.paket\Paket.Restore.targets" />
 </Project>

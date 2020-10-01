@@ -8,6 +8,17 @@ open Fable.Core.JsInterop
 open Fable.React
 open Concur
 
+let rec private collectRenderActions (state) (concurElement : ConcurElement<_, _>) =
+  seq {
+    match concurElement.Connections.OnRender with
+    | Some onRender -> yield onRender state
+    | None -> ()
+
+    yield!
+      concurElement.Children
+      |> Seq.collect (collectRenderActions state)
+  }
+
 let rec private renderConcurElement (dispatch) (concurElement : ConcurElement<_, _>) =
   let connections = concurElement.Connections
   let children = concurElement.Children
@@ -76,7 +87,9 @@ type private ConcurDriver<'tstate> (initProps : Props<'tstate>) =
       ()
 
     override this.render () =
-      let concurElement, action = this.props.App this.state.State
+      let state = this.state.State
+
+      let concurElement = this.props.App state
 
       let rec dispatch action =
         match action with
@@ -89,7 +102,12 @@ type private ConcurDriver<'tstate> (initProps : Props<'tstate>) =
           for x in xs do
             dispatch x
 
-      dispatch action
+      let renderActions =
+        concurElement
+        |> collectRenderActions state
+
+      for renderAction in renderActions do
+        dispatch renderAction
 
       let reactElement = renderConcurElement dispatch concurElement
 

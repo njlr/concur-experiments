@@ -16,6 +16,7 @@ type ConcurAction<'tstate, 'toutput> =
 
 type Connections<'tstate, 'toutput> =
   {
+    OnRender : ('tstate -> ConcurAction<'tstate, 'toutput>) option
     OnClick : (MouseEvent -> ConcurAction<'tstate, 'toutput>) option
     OnChange : (Event -> ConcurAction<'tstate, 'toutput>) option
   }
@@ -28,7 +29,7 @@ type ConcurElement<'tstate, 'toutput> =
     Children : ConcurElement<'tstate, 'toutput> list
   }
 
-type ConcurApp<'tstate, 'toutput> = 'tstate -> ConcurElement<'tstate, 'toutput> * ConcurAction<'tstate, 'toutput>
+type ConcurApp<'tstate, 'toutput> = 'tstate -> ConcurElement<'tstate, 'toutput>
 
 module ConcurAction =
 
@@ -60,6 +61,7 @@ module Connections =
 
   let zero () =
     {
+      OnRender = None
       OnClick = None
       OnChange = None
     }
@@ -89,6 +91,14 @@ module ConcurElement =
     {
       Connections =
         {
+          OnRender =
+            element.Connections.OnRender
+            |> Option.map
+              (fun onRender ->
+                (fun newState ->
+                  let state = newState ^. lens
+                  let action = onRender state
+                  action |> ConcurAction.transform lens dispatch))
           OnClick =
             element.Connections.OnClick
             |> Option.map
@@ -108,6 +118,16 @@ module ConcurElement =
       Children =
         element.Children
         |> List.map (transform lens dispatch)
+    }
+
+  let onRender handler element =
+    {
+      element with
+        Connections =
+          {
+            element.Connections with
+              OnRender = Some handler
+          }
     }
 
   let onClick handler element =
@@ -135,9 +155,9 @@ module ConcurApp =
   let transform (lens : Lens<'tnewstate, 'tstate>) (dispatch : 'toutput -> ConcurAction<'tnewstate, 'tnewoutput>) (app : ConcurApp<'tstate, 'toutput>) : ConcurApp<'tnewstate, 'tnewoutput> =
     (fun (newState : 'tnewstate) ->
       let state = newState ^. lens
-      let element, action = app state
+      let element = app state
 
-      let element = ConcurElement.transform lens dispatch element
-      let action = ConcurAction.transform lens dispatch action
+      ConcurElement.transform lens dispatch element)
 
-      element, action)
+  let toElement (state) (app : ConcurApp<_, _>) =
+    app state

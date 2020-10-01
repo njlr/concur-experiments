@@ -5,6 +5,7 @@ open Fable.Core.JsInterop
 open Fable.React
 open Browser.Dom
 open Concur
+open Concur.Components
 open Aether
 open Aether.Operators
 
@@ -16,7 +17,7 @@ type ToDoItem =
     IsDone : bool
   }
 
-type State =
+type ToDoApp =
   {
     ToDos : Map<Guid, ToDoItem>
     Creating : ToDoItem
@@ -41,12 +42,12 @@ module ToDoItem =
   let isDone : Lens<ToDoItem, _> =
     (fun x -> x.IsDone), (fun v x -> { x with IsDone = v })
 
-module State =
+module ToDoApp =
 
-  let creating : Lens<State, ToDoItem> =
+  let creating : Lens<ToDoApp, ToDoItem> =
     (fun x -> x.Creating), (fun v x -> { x with Creating = v })
 
-  let toDos : Lens<State, Map<_, _>> =
+  let toDos : Lens<ToDoApp, Map<_, _>> =
     (fun x -> x.ToDos), (fun v x -> { x with ToDos = v })
 
   let addToDo (toDoItem : ToDoItem) state =
@@ -57,74 +58,41 @@ module State =
           |> Map.add (Guid.NewGuid ()) toDoItem
     }
 
-
-
-let h1 props children = (ConcurElement.wrapReact h1) props children
-
-let h2 props children = (ConcurElement.wrapReact h2) props children
-
-let p props children = (ConcurElement.wrapReact p) props children
-
-let s props children = (ConcurElement.wrapReact s) props children
-
-let ul props children = (ConcurElement.wrapReact ul) props children
-
-let li props children = (ConcurElement.wrapReact li) props children
-
-let div props children = (ConcurElement.wrapReact div) props children
-
-let form props children = (ConcurElement.wrapReact form) props children
-
-let button props children = (ConcurElement.wrapReact button) props children
-
-let input props = ConcurElement.wrapReact (fun injectedProps _ -> input (injectedProps @ props)) [] []
-
-let textarea props children = (ConcurElement.wrapReact textarea) props children
-
-let str text = ConcurElement.wrapReact (fun _ _ -> str text) [] []
-
-
-
-
 let toDoEditor : ConcurApp<ToDoItem, ToDoItem> =
   (fun state ->
     form
       []
       [
-        (
-          input
-            [
-              Props.Value state.Title
-            ]
-          |> ConcurElement.onChange
-            (fun e ->
-              let title = !!e.target?value
-              ConcurAction.SetState (title ^= ToDoItem.title))
-        )
-        (
-          textarea
-            [
-              Props.Value state.Description
-            ]
-            []
-          |> ConcurElement.onChange
-            (fun e ->
-              let description = !!e.target?value
-              ConcurAction.SetState (description ^= ToDoItem.description))
-        )
-        (
-          button [] [ str "Create" ]
-          |> ConcurElement.onClick
-            (fun e ->
-              e.preventDefault ()
+        input
+          [
+            Props.Value state.Title
+          ]
+        |> ConcurElement.onChange
+          (fun e ->
+            let title = !!e.target?value
+            ConcurAction.SetState (title ^= ToDoItem.title))
 
-              ConcurAction.Sequence
-                [
-                  ConcurAction.SetState (fun _ -> ToDoItem.empty)
-                  ConcurAction.Output { state with Created = DateTime.UtcNow }
-                ])
-        )
-      ], ConcurAction.noOp)
+        textarea
+          [
+            Props.Value state.Description
+          ]
+          []
+        |> ConcurElement.onChange
+          (fun e ->
+            let description = !!e.target?value
+            ConcurAction.SetState (description ^= ToDoItem.description))
+
+        button [] [ str "Create" ]
+        |> ConcurElement.onClick
+          (fun e ->
+            e.preventDefault ()
+
+            ConcurAction.Sequence
+              [
+                ConcurAction.SetState (fun _ -> ToDoItem.empty)
+                ConcurAction.Output { state with Created = DateTime.UtcNow }
+              ])
+      ])
 
 let toDos : ConcurApp<Map<Guid, ToDoItem>, Unit> =
   (fun state ->
@@ -142,7 +110,7 @@ let toDos : ConcurApp<Map<Guid, ToDoItem>, Unit> =
             [
               h2 [] [ if v.IsDone then s [] [ str v.Title ] else str v.Title ]
               p [] [ str (string v.Created) ]
-              p [] [ str v.Description ]
+              p [] [ if v.IsDone then s [] [ str v.Description ] else str v.Description ]
               (
                 button [] [ if v.IsDone then str "Mark as Pending" else str "Mark as Done" ]
                 |> ConcurElement.onClick
@@ -154,36 +122,27 @@ let toDos : ConcurApp<Map<Guid, ToDoItem>, Unit> =
             ]
         )
         |> Seq.toList
-      )), ConcurAction.noOp)
+      )))
 
-let app : ConcurApp<State, Unit> =
+let app : ConcurApp<ToDoApp, Unit> =
   (fun state ->
-    let toDoEditorElement, toDoEditorAction =
-      (
-        toDoEditor
-        |> ConcurApp.transform
-          State.creating
-          (State.addToDo >> ConcurAction.SetState)
-      ) state
-
-    let toDosElement, toDosAction =
-      (
-        toDos
-        |> ConcurApp.transform
-          State.toDos
-          (fun _ -> ConcurAction.noOp)
-      ) state
-
-    let el =
       div
         []
         [
           h1 [] [ str "ToDos" ]
-          toDoEditorElement
-          toDosElement
-        ]
 
-    (el, ConcurAction.Sequence [ toDoEditorAction; toDosAction ]))
+          toDoEditor
+          |> ConcurApp.transform
+            ToDoApp.creating
+            (ToDoApp.addToDo >> ConcurAction.SetState)
+          |> ConcurApp.toElement state
+
+          toDos
+          |> ConcurApp.transform
+            ToDoApp.toDos
+            (fun _ -> ConcurAction.noOp)
+          |> ConcurApp.toElement state
+        ])
 
 let container = document.getElementById "root"
 
