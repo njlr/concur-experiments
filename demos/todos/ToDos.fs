@@ -126,7 +126,37 @@ let toDoEditor : ConcurApp<ToDoItem, ToDoItem> =
         )
       ], ConcurAction.noOp)
 
-let toDos : ConcurApp<State, Unit> =
+let toDos : ConcurApp<Map<Guid, ToDoItem>, Unit> =
+  (fun state ->
+    (ul
+      []
+      (
+        state
+        |> Map.toSeq
+        |> Seq.sortByDescending (fun (k, v) -> v.Created)
+        |> Seq.map (fun (k, v) ->
+          li
+            [
+              Props.Prop.Key (string k)
+            ]
+            [
+              h2 [] [ if v.IsDone then s [] [ str v.Title ] else str v.Title ]
+              p [] [ str (string v.Created) ]
+              p [] [ str v.Description ]
+              (
+                button [] [ if v.IsDone then str "Mark as Pending" else str "Mark as Done" ]
+                |> ConcurElement.onClick
+                  (fun _ ->
+                    let optic = Map.value_ k >-> Option.value_ >?> ToDoItem.isDone
+
+                    ConcurAction.SetState (not ^% optic))
+              )
+            ]
+        )
+        |> Seq.toList
+      )), ConcurAction.noOp)
+
+let app : ConcurApp<State, Unit> =
   (fun state ->
     let toDoEditorElement, toDoEditorAction =
       (
@@ -136,44 +166,24 @@ let toDos : ConcurApp<State, Unit> =
           (State.addToDo >> ConcurAction.SetState)
       ) state
 
+    let toDosElement, toDosAction =
+      (
+        toDos
+        |> ConcurApp.transform
+          State.toDos
+          (fun _ -> ConcurAction.noOp)
+      ) state
+
     let el =
       div
         []
         [
           h1 [] [ str "ToDos" ]
-
           toDoEditorElement
-
-          ul
-            []
-            (
-              state.ToDos
-              |> Map.toSeq
-              |> Seq.sortByDescending (fun (k, v) -> v.Created)
-              |> Seq.map (fun (k, v) ->
-                li
-                  [
-                    Props.Prop.Key (string k)
-                  ]
-                  [
-                    h2 [] [ if v.IsDone then s [] [ str v.Title ] else str v.Title ]
-                    p [] [ str (string v.Created) ]
-                    p [] [ str v.Description ]
-                    (
-                      button [] [ if v.IsDone then str "Mark as Pending" else str "Mark as Done" ]
-                      |> ConcurElement.onClick
-                        (fun _ ->
-                          let optic = State.toDos >-> Map.value_ k >-> Option.value_ >?> ToDoItem.isDone
-
-                          ConcurAction.SetState (not ^% optic))
-                    )
-                  ]
-              )
-              |> Seq.toList
-            )
+          toDosElement
         ]
 
-    (el, toDoEditorAction))
+    (el, ConcurAction.Sequence [ toDoEditorAction; toDosAction ]))
 
 let container = document.getElementById "root"
 
@@ -183,4 +193,4 @@ let initialState =
     Creating = ToDoItem.empty
   }
 
-Dom.runApp container toDos initialState
+Dom.runApp container app initialState
